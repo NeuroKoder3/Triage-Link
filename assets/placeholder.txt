@@ -1,1 +1,0 @@
-Place icon.png (512x512), icon.ico, and icon.icns here for platform-specific builds.
