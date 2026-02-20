@@ -24,15 +24,34 @@
 </p>
 
 <p align="center">
-  <em>Cross-platform Electron desktop application for healthcare triage teams.<br/>
+  <em>Cross-platform Electron desktop application for transplant hospital triage teams.<br/>
   No cloud. No external APIs required. Your data stays on your machine.</em>
 </p>
 
 ---
 
 > **This is an actively developed, ongoing project.**
-> Features, UI, and APIs are evolving. Contributions, feedback, and bug reports are welcome!
-> See [CONTRIBUTING.md](CONTRIBUTING.md) to get involved.
+> Features, UI, and APIs are evolving. For licensing inquiries, contact [NeuroKoder3](https://github.com/NeuroKoder3).
+
+---
+
+## What Is TriageLink?
+
+**Triage-Link** is an AI-powered, fully offline triage application developed for transplant hospitals. It serves as both a **clinical decision support tool** and a **learning system** that continuously refines its AI models for hospital-specific precision.
+
+The platform is designed to assist transplant triage coordinators in rapidly classifying and routing patient communications while operating with **zero internet dependency**, ensuring complete data privacy and **no HIPAA exposure**.
+
+### Dual Purpose of the System
+
+#### 1. Triage Coordination Assistant
+- Provides **AI-assisted patient complaint analysis** and urgency classification
+- Suggests appropriate **paging and routing actions** based on each hospital's protocol
+- Reduces cognitive load for coordinators and **standardizes triage response**
+
+#### 2. Adaptive Learning Engine
+- Continuously refines the AI's reasoning model to better understand **hospital-specific triage language and logic**
+- Learns from usage data stored locally to **improve contextual accuracy** over time
+- Each installation becomes a **self-improving triage assistant** tailored to that hospital's specific rules and phrasing
 
 ---
 
