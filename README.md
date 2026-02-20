@@ -13,7 +13,7 @@
     <img src="https://github.com/NeuroKoder3/Triage-Link/actions/workflows/build.yml/badge.svg" alt="CI" />
   </a>
   <a href="https://github.com/NeuroKoder3/Triage-Link/blob/main/LICENSE">
-    <img src="https://img.shields.io/github/license/NeuroKoder3/Triage-Link?color=blue" alt="License" />
+    <img src="https://img.shields.io/badge/license-Proprietary-red" alt="License" />
   </a>
   <a href="https://github.com/NeuroKoder3/Triage-Link/releases">
     <img src="https://img.shields.io/github/v/release/NeuroKoder3/Triage-Link?include_prereleases&label=version" alt="Version" />
@@ -262,17 +262,15 @@ This is an **ongoing project**. Planned improvements include:
 
 ---
 
-## Contributing
-
-We welcome contributions! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines on how to get started.
-
-## Code of Conduct
-
-This project follows the [Contributor Covenant Code of Conduct](CODE_OF_CONDUCT.md).
-
 ## License
 
-[MIT](LICENSE) — free for personal and commercial use.
+**Proprietary** — All rights reserved. This software may not be used, copied, modified, or
+distributed without explicit written permission from the owner. A 7-day evaluation may be
+granted upon request. See [LICENSE](LICENSE) for full terms.
+
+To request access: [NeuroKoder3 on GitHub](https://github.com/NeuroKoder3) or email Trans_Track@outlook.com.
+
+> **This project does NOT accept pull requests or external code contributions.**
 
 ---
 
