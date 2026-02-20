@@ -1,4 +1,4 @@
-import React, { createContext, useState, useContext, useEffect } from 'react';
+import React, { createContext, useState, useContext, useEffect, useCallback } from 'react';
 import { appClient } from '@/api/appClient';
 
 const AuthContext = createContext();
@@ -7,48 +7,39 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
-  const [isLoadingPublicSettings, setIsLoadingPublicSettings] = useState(true);
-  const [authError, setAuthError] = useState(null);
-  const [appPublicSettings, setAppPublicSettings] = useState(null);
 
   useEffect(() => {
-    checkAppState();
+    checkSession();
   }, []);
 
-  const checkAppState = async () => {
+  const checkSession = async () => {
+    setIsLoadingAuth(true);
     try {
-      setIsLoadingPublicSettings(true);
-      setAuthError(null);
-
-      setAppPublicSettings({ id: 'triagelink-offline', public_settings: {} });
-      setIsLoadingPublicSettings(false);
-
-      const currentUser = await appClient.auth.me();
-      setUser(currentUser);
-      setIsAuthenticated(true);
-      setIsLoadingAuth(false);
-    } catch (error) {
-      console.error('Auth initialization error:', error);
-      setAuthError({
-        type: 'unknown',
-        message: error.message || 'An unexpected error occurred',
-      });
-      setIsLoadingPublicSettings(false);
-      setIsLoadingAuth(false);
+      if (appClient.auth.isLoggedIn()) {
+        const currentUser = await appClient.auth.me();
+        setUser(currentUser);
+        setIsAuthenticated(true);
+      } else {
+        setUser(null);
+        setIsAuthenticated(false);
+      }
+    } catch {
+      setUser(null);
+      setIsAuthenticated(false);
     }
+    setIsLoadingAuth(false);
   };
 
-  const logout = (shouldRedirect = true) => {
+  const loginUser = useCallback((userData) => {
+    setUser(userData);
+    setIsAuthenticated(true);
+  }, []);
+
+  const logout = useCallback(() => {
+    appClient.auth.logout();
     setUser(null);
     setIsAuthenticated(false);
-    if (shouldRedirect) {
-      appClient.auth.logout(window.location.href);
-    }
-  };
-
-  const navigateToLogin = () => {
-    appClient.auth.redirectToLogin(window.location.href);
-  };
+  }, []);
 
   return (
     <AuthContext.Provider
@@ -56,12 +47,13 @@ export const AuthProvider = ({ children }) => {
         user,
         isAuthenticated,
         isLoadingAuth,
-        isLoadingPublicSettings,
-        authError,
-        appPublicSettings,
+        isLoadingPublicSettings: false,
+        authError: null,
+        appPublicSettings: null,
+        loginUser,
         logout,
-        navigateToLogin,
-        checkAppState,
+        navigateToLogin: () => {},
+        checkAppState: checkSession,
       }}
     >
       {children}

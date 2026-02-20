@@ -137,44 +137,110 @@ class EntityStore {
 class LocalAuth {
   constructor() {
     this._user = null;
-    this._loadUser();
+    this._loadSession();
   }
 
-  _loadUser() {
+  _getUsersStore() {
     try {
-      const raw = localStorage.getItem(`${DB_PREFIX}current_user`);
+      const raw = localStorage.getItem(`${DB_PREFIX}registered_users`);
+      return raw ? JSON.parse(raw) : [];
+    } catch {
+      return [];
+    }
+  }
+
+  _saveUsersStore(users) {
+    localStorage.setItem(`${DB_PREFIX}registered_users`, JSON.stringify(users));
+  }
+
+  _loadSession() {
+    try {
+      const raw = localStorage.getItem(`${DB_PREFIX}current_session`);
       this._user = raw ? JSON.parse(raw) : null;
     } catch {
       this._user = null;
     }
-    if (!this._user) {
-      this._user = {
-        id: 'local-admin-001',
-        email: 'admin@triagelink.local',
-        full_name: 'Local Administrator',
-        role: 'admin',
-        created_date: new Date().toISOString(),
-      };
-      localStorage.setItem(
-        `${DB_PREFIX}current_user`,
-        JSON.stringify(this._user)
-      );
+  }
+
+  _saveSession(user) {
+    this._user = user;
+    if (user) {
+      localStorage.setItem(`${DB_PREFIX}current_session`, JSON.stringify(user));
+    } else {
+      localStorage.removeItem(`${DB_PREFIX}current_session`);
     }
+  }
+
+  _hashPassword(password) {
+    let hash = 0;
+    for (let i = 0; i < password.length; i++) {
+      const char = password.charCodeAt(i);
+      hash = ((hash << 5) - hash + char) | 0;
+    }
+    return `tl_${Math.abs(hash).toString(36)}_${password.length}`;
+  }
+
+  async register({ organizationName, email, fullName, role, password }) {
+    const users = this._getUsersStore();
+    const existing = users.find(
+      (u) => u.email.toLowerCase() === email.toLowerCase()
+    );
+    if (existing) {
+      throw new Error('An account with this email already exists. Please log in.');
+    }
+
+    const newUser = {
+      id: generateId(),
+      email: email.toLowerCase(),
+      full_name: fullName || email.split('@')[0],
+      organization_name: organizationName,
+      role: role,
+      password_hash: this._hashPassword(password),
+      created_date: new Date().toISOString(),
+    };
+    users.push(newUser);
+    this._saveUsersStore(users);
+
+    const sessionUser = { ...newUser };
+    delete sessionUser.password_hash;
+    this._saveSession(sessionUser);
+    return sessionUser;
+  }
+
+  async login({ email, password }) {
+    const users = this._getUsersStore();
+    const user = users.find(
+      (u) => u.email.toLowerCase() === email.toLowerCase()
+    );
+    if (!user) {
+      throw new Error('No account found with this email. Please sign up first.');
+    }
+    if (user.password_hash !== this._hashPassword(password)) {
+      throw new Error('Incorrect password. Please try again.');
+    }
+
+    const sessionUser = { ...user };
+    delete sessionUser.password_hash;
+    this._saveSession(sessionUser);
+    return sessionUser;
   }
 
   async me() {
+    if (!this._user) {
+      throw new Error('Not authenticated');
+    }
     return this._user;
   }
 
-  logout(redirectUrl) {
-    if (redirectUrl) {
-      window.location.href = '/';
-    }
+  isLoggedIn() {
+    return !!this._user;
   }
 
-  redirectToLogin() {
-    // No-op in offline mode; user is always authenticated locally
+  logout() {
+    this._saveSession(null);
   }
+
+  redirectToLogin() {}
 }
 
 class LocalIntegrations {

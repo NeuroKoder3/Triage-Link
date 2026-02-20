@@ -24,7 +24,7 @@
   },
   "win": {
     "target": ["nsis", "zip"],
-    "icon": "assets/icon.ico"
+    "icon": "assets/icon.png"
   },
   "linux": {
     "target": ["AppImage", "deb"],

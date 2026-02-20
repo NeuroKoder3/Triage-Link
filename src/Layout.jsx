@@ -3,6 +3,7 @@ import { Link, useLocation } from "react-router-dom";
 import { createPageUrl } from "@/utils";
 import { Activity, FileText, Settings, BarChart3, LogOut } from "lucide-react";
 import { appClient } from "@/api/appClient";
+import { useAuth } from "@/lib/AuthContext";
 import {
   Sidebar,
   SidebarContent,
@@ -68,22 +69,10 @@ const navigationItems = [
 
 export default function Layout({ children, currentPageName }) {
   const location = useLocation();
-  const [user, setUser] = React.useState(null);
-
-  React.useEffect(() => {
-    const fetchUser = async () => {
-      try {
-        const currentUser = await appClient.auth.me();
-        setUser(currentUser);
-      } catch (error) {
-        console.error("Error fetching user:", error);
-      }
-    };
-    fetchUser();
-  }, []);
+  const { user, logout } = useAuth();
 
   const handleLogout = () => {
-    appClient.auth.logout();
+    logout();
   };
 
   const filteredNavItems = navigationItems;
