@@ -80,15 +80,16 @@ export default function TriageDashboard() {
   // Get selected hospital object
   const hospital = hospitals.find(h => h.id === selectedHospital);
 
-  // Get available rules for the current selection
+  // Get available rules for the current selection (includes imported rules with partial matching)
   const availableRules = React.useMemo(() => {
     if (!selectedHospital || !selectedPatientType || !selectedOrganType) return [];
     
-    return allRules.filter(rule => 
-      rule.hospital_id === selectedHospital && 
-      rule.patient_type === selectedPatientType &&
-      rule.organ_type === selectedOrganType
-    );
+    return allRules.filter(rule => {
+      const hospitalMatch = rule.hospital_id === selectedHospital || !rule.hospital_id;
+      const patientMatch = rule.patient_type === selectedPatientType || !rule.patient_type;
+      const organMatch = rule.organ_type === selectedOrganType || !rule.organ_type;
+      return hospitalMatch && patientMatch && organMatch;
+    });
   }, [selectedHospital, selectedPatientType, selectedOrganType, allRules]);
 
   // Start timer when AI analysis begins

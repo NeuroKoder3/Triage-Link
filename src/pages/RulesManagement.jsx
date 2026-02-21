@@ -10,12 +10,14 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Plus, Edit, Trash2, Save, X, Building2, Shield } from "lucide-react";
+import { Plus, Edit, Trash2, Save, X, Building2, Shield, Upload } from "lucide-react";
 import { motion, AnimatePresence } from "framer-motion";
+import ImportRulesDialog from "@/components/rules/ImportRulesDialog";
 
 export default function RulesManagement() {
   const [showRuleForm, setShowRuleForm] = useState(false);
   const [showHospitalForm, setShowHospitalForm] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [editingRule, setEditingRule] = useState(null);
   const [editingHospital, setEditingHospital] = useState(null);
   const [ruleFormData, setRuleFormData] = useState({
@@ -201,15 +203,32 @@ export default function RulesManagement() {
                 <h2 className="text-2xl font-semibold" style={{ color: '#60A5FA' }}>Triage Rules & Paging Routes</h2>
                 <p style={{ color: '#60A5FA' }}>Define criteria, alerts, and escalation paths for each scenario</p>
               </div>
-              <Button
-                onClick={() => setShowRuleForm(!showRuleForm)}
-                className="text-white font-semibold"
-                style={{ backgroundColor: '#60A5FA' }}
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Add New Rule
-              </Button>
+              <div className="flex gap-3">
+                <Button
+                  onClick={() => setShowImportDialog(true)}
+                  variant="outline"
+                  className="font-semibold"
+                  style={{ borderColor: '#60A5FA', color: '#60A5FA' }}
+                >
+                  <Upload className="w-5 h-5 mr-2" />
+                  Import File
+                </Button>
+                <Button
+                  onClick={() => setShowRuleForm(!showRuleForm)}
+                  className="text-white font-semibold"
+                  style={{ backgroundColor: '#60A5FA' }}
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Add New Rule
+                </Button>
+              </div>
             </div>
+
+            <ImportRulesDialog
+              open={showImportDialog}
+              onOpenChange={setShowImportDialog}
+              hospitals={hospitals}
+            />
 
             <AnimatePresence>
               {showRuleForm && (
@@ -451,6 +470,11 @@ export default function RulesManagement() {
                           }}>
                             {rule.priority}
                           </Badge>
+                          {rule.source === 'imported' && (
+                            <Badge style={{ backgroundColor: '#7C3AED20', color: '#A78BFA', borderColor: '#7C3AED' }}>
+                              Imported
+                            </Badge>
+                          )}
                         </div>
                         <p className="font-medium text-lg mb-1" style={{ color: '#60A5FA' }}>{rule.complaint_category}</p>
                         {rule.trigger_criteria && (
