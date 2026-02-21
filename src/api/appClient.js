@@ -171,13 +171,31 @@ class LocalAuth {
     }
   }
 
-  _hashPassword(password) {
-    let hash = 0;
-    for (let i = 0; i < password.length; i++) {
-      const char = password.charCodeAt(i);
-      hash = ((hash << 5) - hash + char) | 0;
+  async _hashPassword(password, salt) {
+    const useSalt = salt || crypto.getRandomValues(new Uint8Array(16))
+      .reduce((s, b) => s + b.toString(16).padStart(2, '0'), '');
+    const encoded = new TextEncoder().encode(useSalt + password);
+    const iterations = 3;
+    let digest = await crypto.subtle.digest('SHA-256', encoded);
+    for (let i = 1; i < iterations; i++) {
+      const combined = new Uint8Array(digest.byteLength + encoded.byteLength);
+      combined.set(new Uint8Array(digest), 0);
+      combined.set(encoded, digest.byteLength);
+      digest = await crypto.subtle.digest('SHA-256', combined);
     }
-    return `tl_${Math.abs(hash).toString(36)}_${password.length}`;
+    const hashHex = Array.from(new Uint8Array(digest))
+      .map(b => b.toString(16).padStart(2, '0'))
+      .join('');
+    return { salt: useSalt, hash: `sha256:${useSalt}:${hashHex}` };
+  }
+
+  async _verifyPassword(password, storedHash) {
+    if (!storedHash.startsWith('sha256:')) return false;
+    const parts = storedHash.split(':');
+    if (parts.length !== 3) return false;
+    const salt = parts[1];
+    const { hash } = await this._hashPassword(password, salt);
+    return hash === storedHash;
   }
 
   async register({ organizationName, email, fullName, role, password }) {
@@ -189,13 +207,15 @@ class LocalAuth {
       throw new Error('An account with this email already exists. Please log in.');
     }
 
+    const { hash } = await this._hashPassword(password);
+
     const newUser = {
       id: generateId(),
       email: email.toLowerCase(),
       full_name: fullName || email.split('@')[0],
       organization_name: organizationName,
       role: role,
-      password_hash: this._hashPassword(password),
+      password_hash: hash,
       created_date: new Date().toISOString(),
     };
     users.push(newUser);
@@ -215,7 +235,8 @@ class LocalAuth {
     if (!user) {
       throw new Error('No account found with this email. Please sign up first.');
     }
-    if (user.password_hash !== this._hashPassword(password)) {
+    const isValid = await this._verifyPassword(password, user.password_hash);
+    if (!isValid) {
       throw new Error('Incorrect password. Please try again.');
     }
 
