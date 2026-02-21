@@ -189,13 +189,36 @@ class LocalAuth {
     return { salt: useSalt, hash: `sha256:${useSalt}:${hashHex}` };
   }
 
+  _legacyHash(password) {
+    let hash = 0;
+    for (let i = 0; i < password.length; i++) {
+      const char = password.charCodeAt(i);
+      hash = ((hash << 5) - hash + char) | 0;
+    }
+    return `tl_${Math.abs(hash).toString(36)}_${password.length}`;
+  }
+
   async _verifyPassword(password, storedHash) {
-    if (!storedHash.startsWith('sha256:')) return false;
-    const parts = storedHash.split(':');
-    if (parts.length !== 3) return false;
-    const salt = parts[1];
-    const { hash } = await this._hashPassword(password, salt);
-    return hash === storedHash;
+    if (storedHash.startsWith('sha256:')) {
+      const parts = storedHash.split(':');
+      if (parts.length !== 3) return false;
+      const salt = parts[1];
+      const { hash } = await this._hashPassword(password, salt);
+      return hash === storedHash;
+    }
+    return storedHash === this._legacyHash(password);
+  }
+
+  async _migrateHashIfNeeded(email, password, storedHash) {
+    if (!storedHash.startsWith('sha256:')) {
+      const { hash: newHash } = await this._hashPassword(password);
+      const users = this._getUsersStore();
+      const idx = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+      if (idx !== -1) {
+        users[idx].password_hash = newHash;
+        this._saveUsersStore(users);
+      }
+    }
   }
 
   async register({ organizationName, email, fullName, role, password }) {
@@ -240,10 +263,30 @@ class LocalAuth {
       throw new Error('Incorrect password. Please try again.');
     }
 
+    await this._migrateHashIfNeeded(email, password, user.password_hash);
+
     const sessionUser = { ...user };
     delete sessionUser.password_hash;
     this._saveSession(sessionUser);
     return sessionUser;
+  }
+
+  async resetPassword({ email, organizationName, newPassword }) {
+    const users = this._getUsersStore();
+    const user = users.find(
+      (u) => u.email.toLowerCase() === email.toLowerCase()
+    );
+    if (!user) {
+      throw new Error('No account found with this email.');
+    }
+    if (user.organization_name?.toLowerCase() !== organizationName?.toLowerCase()) {
+      throw new Error('Organization name does not match our records.');
+    }
+    const { hash } = await this._hashPassword(newPassword);
+    const idx = users.findIndex(u => u.email.toLowerCase() === email.toLowerCase());
+    users[idx].password_hash = hash;
+    this._saveUsersStore(users);
+    return { success: true };
   }
 
   async me() {

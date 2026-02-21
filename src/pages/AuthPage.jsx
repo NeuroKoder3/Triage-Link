@@ -13,10 +13,11 @@ const PASSWORD_RULES = [
 ];
 
 export default function AuthPage({ onAuthSuccess }) {
-  const [mode, setMode] = useState('login');
+  const [mode, setMode] = useState('login'); // login | signup | forgot
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMsg, setSuccessMsg] = useState('');
   const [roleOpen, setRoleOpen] = useState(false);
 
   const [form, setForm] = useState({
@@ -31,6 +32,7 @@ export default function AuthPage({ onAuthSuccess }) {
   const updateField = (field, value) => {
     setForm((prev) => ({ ...prev, [field]: value }));
     setError('');
+    setSuccessMsg('');
   };
 
   const passwordValid = PASSWORD_RULES.every((rule) => rule.test(form.password));
@@ -45,9 +47,16 @@ export default function AuthPage({ onAuthSuccess }) {
 
   const canSubmitLogin = form.email.trim() && form.password.trim();
 
+  const canSubmitReset =
+    form.email.trim() &&
+    form.organizationName.trim() &&
+    passwordValid &&
+    passwordsMatch;
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
+    setSuccessMsg('');
     setIsLoading(true);
 
     try {
@@ -61,6 +70,19 @@ export default function AuthPage({ onAuthSuccess }) {
           password: form.password,
         });
         onAuthSuccess(user);
+      } else if (mode === 'forgot') {
+        if (!canSubmitReset) return;
+        await appClient.auth.resetPassword({
+          email: form.email.trim(),
+          organizationName: form.organizationName.trim(),
+          newPassword: form.password,
+        });
+        setSuccessMsg('Password reset successfully. You can now log in with your new password.');
+        setTimeout(() => {
+          setMode('login');
+          setSuccessMsg('');
+          setForm(prev => ({ ...prev, password: '', confirmPassword: '', organizationName: '' }));
+        }, 2500);
       } else {
         if (!canSubmitLogin) return;
         const user = await appClient.auth.login({
@@ -76,9 +98,11 @@ export default function AuthPage({ onAuthSuccess }) {
     }
   };
 
-  const switchMode = () => {
-    setMode(mode === 'login' ? 'signup' : 'login');
+  const switchMode = (newMode) => {
+    const target = newMode || (mode === 'login' ? 'signup' : 'login');
+    setMode(target);
     setError('');
+    setSuccessMsg('');
     setForm({
       organizationName: '',
       email: '',
@@ -126,7 +150,7 @@ export default function AuthPage({ onAuthSuccess }) {
             className="text-xl font-semibold mb-1 text-center"
             style={{ color: '#60A5FA' }}
           >
-            {mode === 'signup' ? 'Create Your Account' : 'Welcome Back'}
+            {mode === 'signup' ? 'Create Your Account' : mode === 'forgot' ? 'Reset Password' : 'Welcome Back'}
           </h2>
           <p
             className="text-xs text-center mb-6"
@@ -134,6 +158,8 @@ export default function AuthPage({ onAuthSuccess }) {
           >
             {mode === 'signup'
               ? 'Set up your organization to get started'
+              : mode === 'forgot'
+              ? 'Verify your identity to set a new password'
               : 'Log in to your account'}
           </p>
 
@@ -147,7 +173,43 @@ export default function AuthPage({ onAuthSuccess }) {
             </div>
           )}
 
+          {successMsg && (
+            <div
+              className="mb-4 p-3 rounded-lg text-sm flex items-start gap-2"
+              style={{ backgroundColor: '#052e16', border: '1px solid #166534', color: '#4ade80' }}
+            >
+              <CheckCircle2 className="w-4 h-4 mt-0.5 flex-shrink-0" />
+              {successMsg}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-4">
+            {/* Forgot password: organization name verification */}
+            {mode === 'forgot' && (
+              <div>
+                <label
+                  className="block text-xs font-medium mb-1.5"
+                  style={{ color: '#60A5FA' }}
+                >
+                  Organization Name *
+                </label>
+                <input
+                  type="text"
+                  value={form.organizationName}
+                  onChange={(e) => updateField('organizationName', e.target.value)}
+                  placeholder="Enter your organization name to verify identity"
+                  className="w-full px-3 py-2.5 rounded-lg text-sm outline-none transition-colors"
+                  style={{
+                    backgroundColor: '#111827',
+                    border: '1px solid #1e3a5f',
+                    color: '#e2e8f0',
+                  }}
+                  onFocus={(e) => (e.target.style.borderColor = '#60A5FA')}
+                  onBlur={(e) => (e.target.style.borderColor = '#1e3a5f')}
+                />
+              </div>
+            )}
+
             {mode === 'signup' && (
               <>
                 {/* Organization Name */}
@@ -298,7 +360,7 @@ export default function AuthPage({ onAuthSuccess }) {
                 className="block text-xs font-medium mb-1.5"
                 style={{ color: '#60A5FA' }}
               >
-                Password *
+                {mode === 'forgot' ? 'New Password *' : 'Password *'}
               </label>
               <div className="relative">
                 <input
@@ -329,8 +391,8 @@ export default function AuthPage({ onAuthSuccess }) {
                 </button>
               </div>
 
-              {/* Password strength indicators (signup only) */}
-              {mode === 'signup' && form.password.length > 0 && (
+              {/* Password strength indicators (signup and forgot) */}
+              {(mode === 'signup' || mode === 'forgot') && form.password.length > 0 && (
                 <div className="mt-2 space-y-1">
                   {PASSWORD_RULES.map((rule) => {
                     const passes = rule.test(form.password);
@@ -353,8 +415,8 @@ export default function AuthPage({ onAuthSuccess }) {
               )}
             </div>
 
-            {/* Confirm Password (signup only) */}
-            {mode === 'signup' && (
+            {/* Confirm Password (signup and forgot) */}
+            {(mode === 'signup' || mode === 'forgot') && (
               <div>
                 <label
                   className="block text-xs font-medium mb-1.5"
@@ -398,23 +460,23 @@ export default function AuthPage({ onAuthSuccess }) {
               type="submit"
               disabled={
                 isLoading ||
-                (mode === 'signup' ? !canSubmitSignup : !canSubmitLogin)
+                (mode === 'signup' ? !canSubmitSignup : mode === 'forgot' ? !canSubmitReset : !canSubmitLogin)
               }
               className="w-full py-2.5 rounded-lg font-semibold text-sm transition-all duration-200"
               style={{
                 backgroundColor:
                   isLoading ||
-                  (mode === 'signup' ? !canSubmitSignup : !canSubmitLogin)
+                  (mode === 'signup' ? !canSubmitSignup : mode === 'forgot' ? !canSubmitReset : !canSubmitLogin)
                     ? '#1e3a5f'
                     : '#60A5FA',
                 color:
                   isLoading ||
-                  (mode === 'signup' ? !canSubmitSignup : !canSubmitLogin)
+                  (mode === 'signup' ? !canSubmitSignup : mode === 'forgot' ? !canSubmitReset : !canSubmitLogin)
                     ? '#6b7280'
                     : '#000000',
                 cursor:
                   isLoading ||
-                  (mode === 'signup' ? !canSubmitSignup : !canSubmitLogin)
+                  (mode === 'signup' ? !canSubmitSignup : mode === 'forgot' ? !canSubmitReset : !canSubmitLogin)
                     ? 'not-allowed'
                     : 'pointer',
               }}
@@ -423,22 +485,37 @@ export default function AuthPage({ onAuthSuccess }) {
                 ? 'Please wait...'
                 : mode === 'signup'
                 ? 'Create Account'
+                : mode === 'forgot'
+                ? 'Reset Password'
                 : 'Log In'}
             </button>
           </form>
 
           {/* Toggle mode */}
-          <div className="mt-5 text-center">
+          <div className="mt-5 text-center space-y-2">
+            {mode === 'login' && (
+              <p className="text-xs">
+                <button
+                  onClick={() => switchMode('forgot')}
+                  className="font-semibold underline"
+                  style={{ color: '#60A5FA' }}
+                >
+                  Forgot Password?
+                </button>
+              </p>
+            )}
             <p className="text-xs" style={{ color: '#6b7280' }}>
               {mode === 'signup'
                 ? 'Already have an account?'
+                : mode === 'forgot'
+                ? 'Remember your password?'
                 : "Don't have an account?"}
               <button
-                onClick={switchMode}
+                onClick={() => switchMode(mode === 'signup' ? 'login' : mode === 'forgot' ? 'login' : 'signup')}
                 className="ml-1 font-semibold underline"
                 style={{ color: '#60A5FA' }}
               >
-                {mode === 'signup' ? 'Log In' : 'Sign Up'}
+                {mode === 'signup' ? 'Log In' : mode === 'forgot' ? 'Back to Log In' : 'Sign Up'}
               </button>
             </p>
           </div>
