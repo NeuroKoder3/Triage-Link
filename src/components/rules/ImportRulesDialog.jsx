@@ -27,7 +27,7 @@ import {
   Eye,
   Trash2,
 } from "lucide-react";
-import { parseFile, ACCEPTED_FILE_TYPES, FILE_TYPE_LABELS } from "@/lib/fileParser";
+import { parseFile, ACCEPTED_FILE_TYPES, FILE_TYPE_LABELS, extractRulesFromStructuredData, extractRulesFromText } from "@/lib/fileParser";
 
 const EXTRACTION_PROMPT = `You are an expert medical triage data extraction AI. Your task is to analyze a document containing transplant hospital criteria, paging rules, and triage protocols, then extract structured rules from it.
 
@@ -172,6 +172,30 @@ export default function ImportRulesDialog({ open, onOpenChange, hospitals }) {
     e.stopPropagation();
   }, []);
 
+  const extractOffline = () => {
+    if (parsedContent.type === 'xlsx' && parsedContent.structured?.length > 0) {
+      return extractRulesFromStructuredData(parsedContent.structured);
+    }
+    return extractRulesFromText(parsedContent.text);
+  };
+
+  const applyExtractionResult = (parsed) => {
+    const rules = parsed.rules || [];
+    setExtractedRules(rules);
+    setExtractionSummary(parsed.summary || '');
+    setDetectedHospital(parsed.hospital_name || null);
+    setSelectedRules(new Set(rules.map((_, i) => i)));
+    setStep('extracted');
+
+    if (parsed.hospital_name && hospitals.length > 0) {
+      const match = hospitals.find(h =>
+        h.name.toLowerCase().includes(parsed.hospital_name.toLowerCase()) ||
+        parsed.hospital_name.toLowerCase().includes(h.name.toLowerCase())
+      );
+      if (match) setSelectedHospitalId(match.id);
+    }
+  };
+
   const handleExtractRules = async () => {
     if (!parsedContent) return;
 
@@ -198,25 +222,22 @@ export default function ImportRulesDialog({ open, onOpenChange, hospitals }) {
       try {
         parsed = typeof result === 'string' ? JSON.parse(result) : result;
       } catch {
-        parsed = { rules: [], summary: 'Could not parse AI response. You may need to configure an LLM endpoint in Settings.', hospital_name: '' };
+        parsed = { rules: [] };
       }
 
-      const rules = parsed.rules || [];
-      setExtractedRules(rules);
-      setExtractionSummary(parsed.summary || '');
-      setDetectedHospital(parsed.hospital_name || null);
-      setSelectedRules(new Set(rules.map((_, i) => i)));
-      setStep('extracted');
-
-      if (parsed.hospital_name && hospitals.length > 0) {
-        const match = hospitals.find(h =>
-          h.name.toLowerCase().includes(parsed.hospital_name.toLowerCase()) ||
-          parsed.hospital_name.toLowerCase().includes(h.name.toLowerCase())
-        );
-        if (match) setSelectedHospitalId(match.id);
+      if (parsed.rules && parsed.rules.length > 0) {
+        applyExtractionResult(parsed);
+      } else {
+        const offlineResult = extractOffline();
+        applyExtractionResult(offlineResult);
       }
-    } catch (err) {
-      setParseError(`AI extraction failed: ${err.message}`);
+    } catch {
+      try {
+        const offlineResult = extractOffline();
+        applyExtractionResult(offlineResult);
+      } catch (offlineErr) {
+        setParseError(`Extraction failed: ${offlineErr.message}`);
+      }
     } finally {
       setIsExtracting(false);
     }
