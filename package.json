@@ -16,7 +16,8 @@
     "electron:build:mac": "vite build && electron-builder --mac --config electron-builder.json",
     "electron:build:linux": "vite build && electron-builder --linux --config electron-builder.json",
     "lint": "eslint .",
-    "test": "echo \"Tests placeholder — add Jest/Playwright tests\" && exit 0",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "postinstall": "electron-builder install-app-deps"
   },
   "dependencies": {
@@ -50,6 +51,8 @@
     "@radix-ui/react-toggle-group": "^1.1.2",
     "@radix-ui/react-tooltip": "^1.1.8",
     "@tanstack/react-query": "^5.84.1",
+    "bcryptjs": "^3.0.3",
+    "better-sqlite3": "^12.6.2",
     "canvas-confetti": "^1.9.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -106,6 +109,7 @@
     "tailwindcss": "^3.4.17",
     "typescript": "^5.8.2",
     "vite": "^6.1.0",
+    "vitest": "^4.0.18",
     "wait-on": "^8.0.3"
   }
 }

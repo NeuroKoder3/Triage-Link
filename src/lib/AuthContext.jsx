@@ -9,7 +9,8 @@ export const AuthProvider = ({ children }) => {
   const [isLoadingAuth, setIsLoadingAuth] = useState(true);
 
   useEffect(() => {
-    checkSession();
+    const timer = setTimeout(() => checkSession(), 100);
+    return () => clearTimeout(timer);
   }, []);
 
   const checkSession = async () => {
@@ -35,8 +36,10 @@ export const AuthProvider = ({ children }) => {
     setIsAuthenticated(true);
   }, []);
 
-  const logout = useCallback(() => {
-    appClient.auth.logout();
+  const logout = useCallback(async () => {
+    try {
+      if (appClient.auth.logout) await appClient.auth.logout();
+    } catch { /* ignore */ }
     setUser(null);
     setIsAuthenticated(false);
   }, []);

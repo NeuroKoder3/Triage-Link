@@ -6,6 +6,7 @@ import { BrowserRouter as Router, Route, Routes, HashRouter } from 'react-router
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider, useAuth } from '@/lib/AuthContext';
 import AuthPage from '@/pages/AuthPage';
+import ErrorBoundary from '@/components/ErrorBoundary';
 
 const isElectron = !!(window && window.electronAPI);
 const RouterComponent = isElectron ? HashRouter : Router;
@@ -47,7 +48,9 @@ const AppContent = () => {
             path={`/${path}`}
             element={
               <LayoutWrapper currentPageName={path}>
-                <Page />
+                <ErrorBoundary>
+                  <Page />
+                </ErrorBoundary>
               </LayoutWrapper>
             }
           />
@@ -60,12 +63,14 @@ const AppContent = () => {
 
 function App() {
   return (
-    <AuthProvider>
-      <QueryClientProvider client={queryClientInstance}>
-        <AppContent />
-        <Toaster />
-      </QueryClientProvider>
-    </AuthProvider>
+    <ErrorBoundary>
+      <AuthProvider>
+        <QueryClientProvider client={queryClientInstance}>
+          <AppContent />
+          <Toaster />
+        </QueryClientProvider>
+      </AuthProvider>
+    </ErrorBoundary>
   )
 }
 
