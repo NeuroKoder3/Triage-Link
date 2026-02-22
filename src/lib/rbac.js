@@ -3,7 +3,7 @@ const ROLE_PERMISSIONS = {
     pages: [
       'TriageDashboard', 'AIProtocolManagement', 'RulesManagement',
       'PagingConfiguration', 'Compliance', 'AuditLog',
-      'Analytics', 'Reports', 'ReportingDashboard',
+      'Analytics', 'Reports', 'ReportingDashboard', 'Settings',
     ],
     actions: [
       'manage_users', 'manage_rules', 'manage_hospitals', 'manage_paging',
@@ -31,7 +31,7 @@ const ROLE_PERMISSIONS = {
     actions: ['view_reports', 'view_audit', 'view_analytics', 'view_compliance'],
   },
   it: {
-    pages: ['Compliance', 'AuditLog', 'Analytics'],
+    pages: ['Compliance', 'AuditLog', 'Analytics', 'Settings'],
     actions: ['view_audit', 'configure_llm', 'backup_restore', 'view_compliance', 'view_analytics'],
   },
 };

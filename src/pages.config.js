@@ -56,6 +56,7 @@ import PagingConfiguration from './pages/PagingConfiguration';
 import ReportingDashboard from './pages/ReportingDashboard';
 import Reports from './pages/Reports';
 import RulesManagement from './pages/RulesManagement';
+import Settings from './pages/Settings';
 import TriageDashboard from './pages/TriageDashboard';
 import __Layout from './Layout.jsx';
 
@@ -70,6 +71,7 @@ export const PAGES = {
     "ReportingDashboard": ReportingDashboard,
     "Reports": Reports,
     "RulesManagement": RulesManagement,
+    "Settings": Settings,
     "TriageDashboard": TriageDashboard,
 }
 

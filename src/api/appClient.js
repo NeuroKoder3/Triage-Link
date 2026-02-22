@@ -267,9 +267,12 @@ class LocalIntegrations {
               }),
             });
             const data = await response.json();
-            const content = data.choices?.[0]?.message?.content || JSON.stringify(data);
+            let content = data.choices?.[0]?.message?.content || JSON.stringify(data);
             if (params.response_json_schema) {
-              try { return JSON.parse(content); } catch { return content; }
+              const cleaned = content.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
+              try { return JSON.parse(cleaned); } catch {
+                try { return JSON.parse(content); } catch { return content; }
+              }
             }
             return content;
           } catch (error) {
@@ -392,7 +395,20 @@ class AppClient {
     if (ipc) {
       await migrateLocalStorageIfNeeded();
       if (this.auth.init) await this.auth.init();
+      await this._ensureLLMDefaults();
     }
+  }
+
+  async _ensureLLMDefaults() {
+    try {
+      const existing = await this.settings.get('llm_endpoint');
+      if (!existing) {
+        await this.settings.set('llm_endpoint', 'http://localhost:11434/v1/chat/completions');
+        await this.settings.set('llm_model', 'llama3.1:8b');
+        await this.settings.set('llm_api_key', '');
+        console.log('[TriageLink] Ollama defaults configured');
+      }
+    } catch {}
   }
 }
 

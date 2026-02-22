@@ -30,6 +30,7 @@ const allNavigationItems = [
   { title: "Analytics", url: createPageUrl("Analytics"), icon: BarChart3, page: "Analytics" },
   { title: "Reports", url: createPageUrl("Reports"), icon: FileText, page: "Reports" },
   { title: "Reporting Dashboard", url: createPageUrl("ReportingDashboard"), icon: BarChart3, page: "ReportingDashboard" },
+  { title: "Settings", url: createPageUrl("Settings"), icon: Settings, page: "Settings" },
 ];
 
 export default function Layout({ children }) {
