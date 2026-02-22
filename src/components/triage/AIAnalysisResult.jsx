@@ -63,7 +63,7 @@ export default function AIAnalysisResult({
               }}
             >
               <UrgencyIcon className="w-4 h-4 mr-2" />
-              {analysis.urgency_level.toUpperCase()}
+              {(analysis.urgency_level || 'UNKNOWN').toUpperCase()}
             </Badge>
           </div>
         </CardHeader>
@@ -186,7 +186,7 @@ export default function AIAnalysisResult({
             }}>
               <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: '#FBBF24' }}>
                 <AlertTriangle className="w-5 h-5" />
-                ⚠️ MEDICATION TOXICITY ALERT - {analysis.drug_toxicity_alert.severity.toUpperCase()}
+                ⚠️ MEDICATION TOXICITY ALERT - {(analysis.drug_toxicity_alert?.severity || 'WARNING').toUpperCase()}
               </h3>
               <div className="space-y-2 text-sm" style={{ color: '#FDE68A' }}>
                 <p><strong>Suspected Drug:</strong> {analysis.drug_toxicity_alert.suspected_drug}</p>
@@ -212,7 +212,7 @@ export default function AIAnalysisResult({
             }}>
               <h3 className="font-semibold mb-3 flex items-center gap-2" style={{ color: '#FCA5A5' }}>
                 <AlertTriangle className="w-5 h-5" />
-                🚫 DRUG INTERACTION DETECTED - {analysis.drug_interaction_alert.severity.toUpperCase()}
+                🚫 DRUG INTERACTION DETECTED - {(analysis.drug_interaction_alert?.severity || 'WARNING').toUpperCase()}
               </h3>
               <div className="space-y-2 text-sm" style={{ color: '#FEE2E2' }}>
                 <p><strong>Interacting Medications:</strong> {analysis.drug_interaction_alert.interacting_drugs?.join(' + ')}</p>

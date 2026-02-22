@@ -56,7 +56,7 @@ export default function TriageInstructions({
                 borderColor: priorityConfig.border
               }}
             >
-              {priorityLevel.toUpperCase()}
+              {(priorityLevel || 'UNKNOWN').toUpperCase()}
             </Badge>
           </div>
         </CardHeader>

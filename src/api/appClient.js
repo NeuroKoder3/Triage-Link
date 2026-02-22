@@ -267,14 +267,29 @@ class LocalIntegrations {
               }),
             });
             const data = await response.json();
-            return data.choices?.[0]?.message?.content || JSON.stringify(data);
+            const content = data.choices?.[0]?.message?.content || JSON.stringify(data);
+            if (params.response_json_schema) {
+              try { return JSON.parse(content); } catch { return content; }
+            }
+            return content;
           } catch (error) {
             console.warn('[TriageLink] LLM call failed:', error.message);
           }
         }
 
         if (params.response_json_schema) {
-          return JSON.stringify({ analysis: 'Offline mode — configure an LLM endpoint in Settings.', recommendations: ['Connect a local LLM (e.g. Ollama) or set an OpenAI-compatible API key.'], confidence: 0 });
+          return {
+            urgency_level: 'non-urgent',
+            matched_rule_id: 'GENERAL_PROTOCOL',
+            complaint_category: 'General Triage Protocol',
+            action_required: 'Offline mode — configure an LLM endpoint in Settings to enable AI-powered analysis.',
+            reasoning: 'No LLM endpoint configured. Connect a local LLM (e.g. Ollama) or set an OpenAI-compatible API key in Settings.',
+            confidence_score: 0,
+            ai_summary: 'Offline Mode | No AI analysis available — please configure an LLM endpoint in Settings.',
+            patient_condition_summary: 'AI analysis unavailable in offline mode. Please review the complaint manually and apply hospital protocols.',
+            needs_clarification: false,
+            follow_up_actions: ['Configure an LLM endpoint in Settings to enable AI-powered triage analysis.'],
+          };
         }
         return 'Offline mode — configure an LLM endpoint in Settings for AI-powered analysis.';
       },

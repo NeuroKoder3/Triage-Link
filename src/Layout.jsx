@@ -132,7 +132,7 @@ export default function Layout({ children }) {
                     {user?.full_name || 'User'}
                   </p>
                   <p className="text-xs truncate" style={{ color: '#60A5FA', opacity: 0.7 }}>
-                    {user?.role?.charAt(0).toUpperCase() + user?.role?.slice(1) || ''} &middot; {user?.email || ''}
+                    {user?.role ? user.role.charAt(0).toUpperCase() + user.role.slice(1) : ''} &middot; {user?.email || ''}
                   </p>
                 </div>
               </div>

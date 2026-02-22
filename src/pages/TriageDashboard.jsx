@@ -590,7 +590,7 @@ INFORMATION COMPLETENESS CHECK:
       console.log('Calling LLM with prompt length:', prompt.length);
       console.log('Rules context:', rulesContext);
       
-      const result = await appClient.integrations.Core.InvokeLLM({
+      const rawResult = await appClient.integrations.Core.InvokeLLM({
         prompt: prompt,
         response_json_schema: {
           type: "object",
@@ -750,6 +750,20 @@ INFORMATION COMPLETENESS CHECK:
           required: ["urgency_level", "matched_rule_id", "reasoning", "confidence_score", "ai_summary", "needs_clarification"]
         }
       });
+
+      let result = rawResult;
+      if (typeof rawResult === 'string') {
+        try { result = JSON.parse(rawResult); } catch {
+          result = {
+            urgency_level: 'non-urgent',
+            matched_rule_id: 'GENERAL_PROTOCOL',
+            reasoning: rawResult,
+            confidence_score: 0,
+            ai_summary: rawResult,
+            needs_clarification: false,
+          };
+        }
+      }
 
       // Store risk assessment if AI provided one
       if (result.risk_assessment && result.risk_assessment.readmission_risk) {
