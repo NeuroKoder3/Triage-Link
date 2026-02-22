@@ -312,7 +312,7 @@ export default function ImportRulesDialog({ open, onOpenChange, hospitals }) {
 
   return (
     <Dialog open={open} onOpenChange={(v) => { if (!v) handleClose(); else onOpenChange(v); }}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-hidden flex flex-col" style={{ backgroundColor: '#1F2937', borderColor: '#60A5FA' }}>
+      <DialogContent className="max-w-3xl max-h-[85vh] overflow-hidden flex flex-col" style={{ backgroundColor: '#1F2937', borderColor: '#60A5FA' }}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2" style={{ color: '#60A5FA' }}>
             <Import className="w-5 h-5" />
@@ -335,7 +335,7 @@ export default function ImportRulesDialog({ open, onOpenChange, hospitals }) {
           ))}
         </div>
 
-        <ScrollArea className="flex-1 pr-4" style={{ maxHeight: 'calc(90vh - 200px)' }}>
+        <ScrollArea className="flex-1 pr-4" style={{ maxHeight: 'calc(85vh - 220px)' }}>
           {/* STEP 1: Upload */}
           {step === 'upload' && (
             <div className="space-y-4 py-4">
@@ -587,28 +587,6 @@ export default function ImportRulesDialog({ open, onOpenChange, hospitals }) {
                   <p className="text-sm" style={{ color: '#FCA5A5' }}>{parseError}</p>
                 </div>
               )}
-
-              <div className="flex gap-3 justify-end">
-                <Button variant="outline" onClick={() => setStep('preview')} style={{ borderColor: '#60A5FA' }}>
-                  Back
-                </Button>
-                <Button
-                  onClick={handleImportSelected}
-                  disabled={selectedRules.size === 0 || isImporting}
-                  className="font-semibold"
-                  style={{ backgroundColor: '#10B981', color: '#fff' }}
-                >
-                  {isImporting ? (
-                    <span className="flex items-center gap-2">
-                      <Loader2 className="w-4 h-4 animate-spin" /> Importing {selectedRules.size} Rules...
-                    </span>
-                  ) : (
-                    <span className="flex items-center gap-2">
-                      <Import className="w-4 h-4" /> Import {selectedRules.size} Rules
-                    </span>
-                  )}
-                </Button>
-              </div>
             </div>
           )}
 
@@ -628,21 +606,49 @@ export default function ImportRulesDialog({ open, onOpenChange, hospitals }) {
                   From: {file?.name}
                 </p>
               </div>
-              <div className="flex gap-3 justify-center pt-4">
-                <Button
-                  variant="outline"
-                  onClick={resetState}
-                  style={{ borderColor: '#60A5FA', color: '#60A5FA' }}
-                >
-                  Import Another File
-                </Button>
-                <Button onClick={handleClose} style={{ backgroundColor: '#60A5FA', color: '#000' }}>
-                  Done
-                </Button>
-              </div>
             </div>
           )}
         </ScrollArea>
+
+        {/* Pinned footer buttons */}
+        {step === 'extracted' && extractedRules && (
+          <div className="flex gap-3 justify-end pt-4 border-t" style={{ borderColor: '#60A5FA30' }}>
+            <Button variant="outline" onClick={() => setStep('preview')} style={{ borderColor: '#60A5FA' }}>
+              Back
+            </Button>
+            <Button
+              onClick={handleImportSelected}
+              disabled={selectedRules.size === 0 || isImporting}
+              className="font-semibold"
+              style={{ backgroundColor: '#10B981', color: '#fff' }}
+            >
+              {isImporting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" /> Importing {selectedRules.size} Rules...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <Import className="w-4 h-4" /> Import {selectedRules.size} Rules
+                </span>
+              )}
+            </Button>
+          </div>
+        )}
+
+        {step === 'done' && importResult && (
+          <div className="flex gap-3 justify-center pt-4 border-t" style={{ borderColor: '#60A5FA30' }}>
+            <Button
+              variant="outline"
+              onClick={resetState}
+              style={{ borderColor: '#60A5FA', color: '#60A5FA' }}
+            >
+              Import Another File
+            </Button>
+            <Button onClick={handleClose} style={{ backgroundColor: '#60A5FA', color: '#000' }}>
+              Done
+            </Button>
+          </div>
+        )}
       </DialogContent>
     </Dialog>
   );
