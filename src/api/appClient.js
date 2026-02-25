@@ -243,58 +243,15 @@ class LocalAuth {
   redirectToLogin() {}
 }
 
-// --- Integrations ---
+// --- Integrations (Built-in AI Engine) ---
 class LocalIntegrations {
   constructor() {
+    this._engine = null;
+    this._enginePromise = null;
     this.Core = {
       InvokeLLM: async (params) => {
-        const endpoint = ipc ? await ipc.settings.get('llm_endpoint') : localStorage.getItem(`${DB_PREFIX}llm_endpoint`) || '';
-        const apiKey = ipc ? await ipc.settings.get('llm_api_key') : localStorage.getItem(`${DB_PREFIX}llm_api_key`) || '';
-        const model = ipc ? await ipc.settings.get('llm_model') : localStorage.getItem(`${DB_PREFIX}llm_model`) || 'gpt-4';
-
-        if (endpoint) {
-          try {
-            const response = await fetch(endpoint, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', ...(apiKey ? { Authorization: `Bearer ${apiKey}` } : {}) },
-              body: JSON.stringify({
-                model: model || 'gpt-4',
-                messages: [
-                  ...(params.system_prompt ? [{ role: 'system', content: params.system_prompt }] : []),
-                  { role: 'user', content: params.prompt || params.user_prompt || '' },
-                ],
-                ...(params.response_json_schema ? { response_format: { type: 'json_object' } } : {}),
-              }),
-            });
-            const data = await response.json();
-            let content = data.choices?.[0]?.message?.content || JSON.stringify(data);
-            if (params.response_json_schema) {
-              const cleaned = content.replace(/^```(?:json)?\s*\n?/i, '').replace(/\n?```\s*$/i, '').trim();
-              try { return JSON.parse(cleaned); } catch {
-                try { return JSON.parse(content); } catch { return content; }
-              }
-            }
-            return content;
-          } catch (error) {
-            console.warn('[TriageLink] LLM call failed:', error.message);
-          }
-        }
-
-        if (params.response_json_schema) {
-          return {
-            urgency_level: 'non-urgent',
-            matched_rule_id: 'GENERAL_PROTOCOL',
-            complaint_category: 'General Triage Protocol',
-            action_required: 'Offline mode — configure an LLM endpoint in Settings to enable AI-powered analysis.',
-            reasoning: 'No LLM endpoint configured. Connect a local LLM (e.g. Ollama) or set an OpenAI-compatible API key in Settings.',
-            confidence_score: 0,
-            ai_summary: 'Offline Mode | No AI analysis available — please configure an LLM endpoint in Settings.',
-            patient_condition_summary: 'AI analysis unavailable in offline mode. Please review the complaint manually and apply hospital protocols.',
-            needs_clarification: false,
-            follow_up_actions: ['Configure an LLM endpoint in Settings to enable AI-powered triage analysis.'],
-          };
-        }
-        return 'Offline mode — configure an LLM endpoint in Settings for AI-powered analysis.';
+        const engine = await this._getEngine();
+        return engine.routeInvokeLLM(params);
       },
       SendEmail: async (params) => { console.log('[TriageLink] Email queued:', params); return { success: true, message: 'Email logged locally' }; },
       SendSMS: async (params) => { console.log('[TriageLink] SMS queued:', params); return { success: true, message: 'SMS logged locally' }; },
@@ -302,6 +259,17 @@ class LocalIntegrations {
       GenerateImage: async (params) => { console.log('[TriageLink] Image generation:', params); return { url: 'local://generated-image', success: true }; },
       ExtractDataFromUploadedFile: async (params) => { console.log('[TriageLink] Data extraction:', params); return { data: {}, success: true }; },
     };
+  }
+
+  async _getEngine() {
+    if (this._engine) return this._engine;
+    if (!this._enginePromise) {
+      this._enginePromise = import('@/lib/triageAI.js').then(mod => {
+        this._engine = mod;
+        return mod;
+      });
+    }
+    return this._enginePromise;
   }
 }
 
@@ -395,20 +363,7 @@ class AppClient {
     if (ipc) {
       await migrateLocalStorageIfNeeded();
       if (this.auth.init) await this.auth.init();
-      await this._ensureLLMDefaults();
     }
-  }
-
-  async _ensureLLMDefaults() {
-    try {
-      const existing = await this.settings.get('llm_endpoint');
-      if (!existing) {
-        await this.settings.set('llm_endpoint', 'http://localhost:11434/v1/chat/completions');
-        await this.settings.set('llm_model', 'llama3.1:8b');
-        await this.settings.set('llm_api_key', '');
-        console.log('[TriageLink] Ollama defaults configured');
-      }
-    } catch {}
   }
 }
 

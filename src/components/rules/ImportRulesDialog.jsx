@@ -1,6 +1,6 @@
 import React, { useState, useRef, useCallback } from "react";
 import { appClient } from "@/api/appClient";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Dialog,
   DialogContent,
@@ -29,44 +29,7 @@ import {
 } from "lucide-react";
 import { parseFile, ACCEPTED_FILE_TYPES, FILE_TYPE_LABELS, extractRulesFromStructuredData, extractRulesFromText } from "@/lib/fileParser";
 
-const EXTRACTION_PROMPT = `You are an expert medical triage data extraction AI. Your task is to analyze a document containing transplant hospital criteria, paging rules, and triage protocols, then extract structured rules from it.
-
-DOCUMENT CONTENT:
-{DOCUMENT_TEXT}
-
-INSTRUCTIONS:
-1. Carefully read the entire document content above
-2. Identify ALL triage rules, paging criteria, alert thresholds, escalation paths, and contact routing instructions
-3. For each rule found, extract the structured fields listed below
-4. If a field is not explicitly stated, infer it from context or mark it as empty
-5. Pay special attention to: complaint categories, trigger criteria, paging numbers, escalation paths, urgency levels, organ types, patient types
-
-Extract each rule as a JSON object. Return a JSON object with this exact structure:
-{
-  "rules": [
-    {
-      "complaint_category": "The complaint or condition category (e.g., Fever, Pain, Bleeding, Medication Issue)",
-      "trigger_criteria": "Specific threshold or criteria that triggers this rule (e.g., Fever >100.5°F, Creatinine >2.0)",
-      "action_required": "What action to take / who to page / routing instructions",
-      "contact_method": "phone | secure_page | email | urgent_page",
-      "contact_info": "Phone/pager number if mentioned",
-      "escalation_path": "Who to escalate to if no response",
-      "priority": "routine | urgent | emergency",
-      "patient_type": "pre-transplant | post-transplant | non-transplant (if specified)",
-      "organ_type": "kidney | liver | kidney-pancreas (if specified)",
-      "documentation_notes": "Any required documentation or special instructions"
-    }
-  ],
-  "hospital_name": "Name of the hospital if mentioned in the document",
-  "summary": "Brief 2-3 sentence summary of what the document contains"
-}
-
-IMPORTANT:
-- Extract EVERY rule you can find, even partial ones
-- Use exact paging numbers and contact info from the document
-- Preserve medical terminology exactly as written
-- If the document has tabular data, treat each row as a potential rule
-- Return valid JSON only`;
+// No external prompt needed — extraction is handled by the built-in file parser
 
 function getFileIcon(fileName) {
   const ext = fileName.split('.').pop().toLowerCase();
@@ -203,41 +166,10 @@ export default function ImportRulesDialog({ open, onOpenChange, hospitals }) {
     setParseError(null);
 
     try {
-      const docText = parsedContent.text.substring(0, 15000);
-      const prompt = EXTRACTION_PROMPT.replace('{DOCUMENT_TEXT}', docText);
-
-      const result = await appClient.integrations.Core.InvokeLLM({
-        prompt,
-        response_json_schema: {
-          type: "object",
-          properties: {
-            rules: { type: "array" },
-            hospital_name: { type: "string" },
-            summary: { type: "string" },
-          },
-        },
-      });
-
-      let parsed;
-      try {
-        parsed = typeof result === 'string' ? JSON.parse(result) : result;
-      } catch {
-        parsed = { rules: [] };
-      }
-
-      if (parsed.rules && parsed.rules.length > 0) {
-        applyExtractionResult(parsed);
-      } else {
-        const offlineResult = extractOffline();
-        applyExtractionResult(offlineResult);
-      }
-    } catch {
-      try {
-        const offlineResult = extractOffline();
-        applyExtractionResult(offlineResult);
-      } catch (offlineErr) {
-        setParseError(`Extraction failed: ${offlineErr.message}`);
-      }
+      const result = extractOffline();
+      applyExtractionResult(result);
+    } catch (err) {
+      setParseError(`Extraction failed: ${err.message}`);
     } finally {
       setIsExtracting(false);
     }

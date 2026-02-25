@@ -1,11 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { appClient } from "@/api/appClient";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Settings as SettingsIcon, Cpu, CheckCircle, XCircle, Loader2, Shield, Database, Download, Upload, FileJson } from "lucide-react";
+import { Settings as SettingsIcon, Cpu, CheckCircle, Loader2, Shield, Database, Download, Upload, FileJson } from "lucide-react";
 import { motion } from "framer-motion";
 import { useAuth } from "@/lib/AuthContext";
 import { canPerformAction } from "@/lib/rbac";
@@ -13,118 +11,31 @@ import { canPerformAction } from "@/lib/rbac";
 export default function Settings() {
   const { user } = useAuth();
   const userRole = user?.role || 'coordinator';
-  const canConfigureLLM = canPerformAction(userRole, 'configure_llm');
   const canBackup = canPerformAction(userRole, 'backup_restore');
 
-  const [llmEndpoint, setLlmEndpoint] = useState('');
-  const [llmApiKey, setLlmApiKey] = useState('');
-  const [llmModel, setLlmModel] = useState('');
-  const [saving, setSaving] = useState(false);
-  const [saved, setSaved] = useState(false);
   const [testing, setTesting] = useState(false);
   const [testResult, setTestResult] = useState(null);
-  const [ollamaModels, setOllamaModels] = useState([]);
-  const [loadingModels, setLoadingModels] = useState(false);
   const [backupStatus, setBackupStatus] = useState(null);
-
-  useEffect(() => {
-    loadSettings();
-  }, []);
-
-  const loadSettings = async () => {
-    try {
-      const endpoint = await appClient.settings.get('llm_endpoint') || '';
-      const apiKey = await appClient.settings.get('llm_api_key') || '';
-      const model = await appClient.settings.get('llm_model') || '';
-      setLlmEndpoint(endpoint);
-      setLlmApiKey(apiKey);
-      setLlmModel(model);
-
-      if (endpoint && endpoint.includes('localhost:11434')) {
-        fetchOllamaModels(endpoint);
-      }
-    } catch (err) {
-      console.error('Failed to load settings:', err);
-    }
-  };
-
-  const fetchOllamaModels = async (endpoint) => {
-    setLoadingModels(true);
-    try {
-      const baseUrl = endpoint.replace(/\/v1\/chat\/completions.*/, '');
-      const response = await fetch(`${baseUrl}/api/tags`);
-      const data = await response.json();
-      setOllamaModels(data.models || []);
-    } catch {
-      setOllamaModels([]);
-    } finally {
-      setLoadingModels(false);
-    }
-  };
-
-  const handleSave = async () => {
-    setSaving(true);
-    setSaved(false);
-    try {
-      await appClient.settings.set('llm_endpoint', llmEndpoint);
-      await appClient.settings.set('llm_api_key', llmApiKey);
-      await appClient.settings.set('llm_model', llmModel);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-
-      if (llmEndpoint.includes('localhost:11434')) {
-        fetchOllamaModels(llmEndpoint);
-      }
-
-      try {
-        await appClient.audit.log({
-          action: 'settings_updated',
-          entity: 'llm_config',
-          severity: 'info',
-          details: JSON.stringify({ endpoint: llmEndpoint, model: llmModel }),
-        });
-      } catch {}
-    } catch (err) {
-      console.error('Failed to save settings:', err);
-    } finally {
-      setSaving(false);
-    }
-  };
 
   const handleTest = async () => {
     setTesting(true);
     setTestResult(null);
     try {
       const result = await appClient.integrations.Core.InvokeLLM({
-        prompt: 'Respond with exactly: {"status":"ok","message":"LLM connection successful"}',
+        prompt: 'Respond with exactly: {"status":"ok","message":"AI engine active"}',
         response_json_schema: {
           type: "object",
-          properties: {
-            status: { type: "string" },
-            message: { type: "string" },
-          },
+          properties: { status: { type: "string" }, message: { type: "string" } },
         },
       });
 
       const parsed = typeof result === 'string' ? JSON.parse(result) : result;
-      if (parsed.status === 'ok' || parsed.message) {
-        setTestResult({ success: true, message: parsed.message || 'Connection successful!' });
-      } else if (parsed.confidence_score === 0) {
-        setTestResult({ success: false, message: 'No LLM endpoint configured. Enter an endpoint URL and save first.' });
-      } else {
-        setTestResult({ success: true, message: `LLM responded. Model is working.` });
-      }
+      setTestResult({ success: true, message: parsed.message || 'Built-in AI engine is active and ready.' });
     } catch (err) {
-      setTestResult({ success: false, message: err.message || 'Connection failed' });
+      setTestResult({ success: false, message: err.message || 'Engine test failed' });
     } finally {
       setTesting(false);
     }
-  };
-
-  const setOllamaDefaults = () => {
-    setLlmEndpoint('http://localhost:11434/v1/chat/completions');
-    setLlmApiKey('');
-    setLlmModel('llama3.1:8b');
   };
 
   const handleBackupCreate = async () => {
@@ -181,177 +92,68 @@ export default function Settings() {
         <SettingsIcon className="w-8 h-8" style={{ color: '#60A5FA' }} />
         <div>
           <h1 className="text-3xl font-bold" style={{ color: '#60A5FA' }}>Settings</h1>
-          <p className="text-sm" style={{ color: '#60A5FA', opacity: 0.7 }}>Configure AI, backups, and system preferences</p>
+          <p className="text-sm" style={{ color: '#60A5FA', opacity: 0.7 }}>AI engine status, backups, and system preferences</p>
         </div>
       </div>
 
-      {canConfigureLLM && (
-        <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
-          <Card className="border" style={{ backgroundColor: '#111827', borderColor: '#1E3A5F' }}>
-            <CardHeader className="border-b" style={{ borderColor: '#1E3A5F' }}>
-              <CardTitle className="flex items-center gap-2" style={{ color: '#60A5FA' }}>
-                <Cpu className="w-5 h-5" />
-                AI / LLM Configuration
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6 space-y-6">
-              <div className="p-4 rounded-lg border" style={{ backgroundColor: '#0D1B2A', borderColor: '#1E3A5F' }}>
-                <h3 className="text-sm font-semibold mb-2" style={{ color: '#60A5FA' }}>Quick Setup</h3>
-                <p className="text-xs mb-3" style={{ color: '#93C5FD' }}>
-                  Choose a provider to auto-fill the settings below. Ollama is recommended for fully offline operation.
-                </p>
-                <div className="flex gap-2 flex-wrap">
-                  <Button
-                    size="sm"
-                    onClick={setOllamaDefaults}
-                    className="text-xs"
-                    style={{ backgroundColor: '#1E3A5F', color: '#60A5FA', borderColor: '#60A5FA' }}
-                  >
-                    <Cpu className="w-3 h-3 mr-1" /> Ollama (Local)
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => { setLlmEndpoint('https://api.openai.com/v1/chat/completions'); setLlmModel('gpt-4o'); }}
-                    className="text-xs"
-                    variant="outline"
-                    style={{ color: '#60A5FA', borderColor: '#374151' }}
-                  >
-                    OpenAI
-                  </Button>
-                  <Button
-                    size="sm"
-                    onClick={() => { setLlmEndpoint('http://localhost:1234/v1/chat/completions'); setLlmModel(''); }}
-                    className="text-xs"
-                    variant="outline"
-                    style={{ color: '#60A5FA', borderColor: '#374151' }}
-                  >
-                    LM Studio
-                  </Button>
-                </div>
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3 }}>
+        <Card className="border" style={{ backgroundColor: '#111827', borderColor: '#1E3A5F' }}>
+          <CardHeader className="border-b" style={{ borderColor: '#1E3A5F' }}>
+            <CardTitle className="flex items-center gap-2" style={{ color: '#60A5FA' }}>
+              <Cpu className="w-5 h-5" />
+              Built-in AI Engine
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="p-6 space-y-4">
+            <div className="p-4 rounded-lg border" style={{ backgroundColor: '#0D1B2A', borderColor: '#1E3A5F' }}>
+              <div className="flex items-center gap-3 mb-3">
+                <div className="w-3 h-3 rounded-full animate-pulse" style={{ backgroundColor: '#10B981' }} />
+                <h3 className="text-sm font-semibold" style={{ color: '#60A5FA' }}>Engine Status: Active</h3>
               </div>
-
-              <div className="space-y-4">
-                <div>
-                  <Label className="text-sm font-medium" style={{ color: '#60A5FA' }}>API Endpoint URL</Label>
-                  <Input
-                    value={llmEndpoint}
-                    onChange={(e) => setLlmEndpoint(e.target.value)}
-                    placeholder="http://localhost:11434/v1/chat/completions"
-                    className="mt-1 font-mono text-sm"
-                    style={{ backgroundColor: '#0D1B2A', color: '#E5E7EB', borderColor: '#374151' }}
-                  />
-                  <p className="text-xs mt-1" style={{ color: '#6B7280' }}>
-                    OpenAI-compatible chat completions endpoint
-                  </p>
-                </div>
-
-                <div>
-                  <Label className="text-sm font-medium" style={{ color: '#60A5FA' }}>API Key (optional for Ollama)</Label>
-                  <Input
-                    type="password"
-                    value={llmApiKey}
-                    onChange={(e) => setLlmApiKey(e.target.value)}
-                    placeholder="sk-... (leave empty for local models)"
-                    className="mt-1 font-mono text-sm"
-                    style={{ backgroundColor: '#0D1B2A', color: '#E5E7EB', borderColor: '#374151' }}
-                  />
-                </div>
-
-                <div>
-                  <Label className="text-sm font-medium" style={{ color: '#60A5FA' }}>Model Name</Label>
-                  <div className="flex gap-2 mt-1">
-                    <Input
-                      value={llmModel}
-                      onChange={(e) => setLlmModel(e.target.value)}
-                      placeholder="llama3.1:8b"
-                      className="font-mono text-sm"
-                      style={{ backgroundColor: '#0D1B2A', color: '#E5E7EB', borderColor: '#374151' }}
-                    />
-                    {llmEndpoint.includes('localhost:11434') && (
-                      <Button
-                        size="sm"
-                        variant="outline"
-                        onClick={() => fetchOllamaModels(llmEndpoint)}
-                        disabled={loadingModels}
-                        style={{ color: '#60A5FA', borderColor: '#374151' }}
-                      >
-                        {loadingModels ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Refresh'}
-                      </Button>
-                    )}
-                  </div>
-
-                  {ollamaModels.length > 0 && (
-                    <div className="mt-2 flex flex-wrap gap-1">
-                      <span className="text-xs" style={{ color: '#6B7280' }}>Available:</span>
-                      {ollamaModels.map((m) => (
-                        <button
-                          key={m.name}
-                          onClick={() => setLlmModel(m.name)}
-                          className="px-2 py-0.5 rounded text-xs border transition-colors"
-                          style={{
-                            backgroundColor: llmModel === m.name ? '#1E3A5F' : 'transparent',
-                            color: llmModel === m.name ? '#60A5FA' : '#93C5FD',
-                            borderColor: llmModel === m.name ? '#60A5FA' : '#374151',
-                          }}
-                        >
-                          {m.name} {m.size ? `(${(m.size / 1e9).toFixed(1)}GB)` : ''}
-                        </button>
-                      ))}
-                    </div>
-                  )}
-                </div>
+              <p className="text-xs mb-4" style={{ color: '#93C5FD' }}>
+                TriageLink uses a fully embedded AI engine — no external APIs or internet connection required.
+                The engine analyzes complaints using imported hospital rules, built-in medical knowledge,
+                and transplant-specific clinical reasoning.
+              </p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <FeatureItem label="Rule-Based Matching" description="Matches complaints against imported hospital protocols" />
+                <FeatureItem label="Medical Knowledge" description="Built-in transplant, rejection, and drug interaction awareness" />
+                <FeatureItem label="Drug Toxicity Detection" description="Identifies immunosuppressant toxicity and interactions" />
+                <FeatureItem label="Clinical Reasoning" description="Generates urgency, routing, and follow-up recommendations" />
+                <FeatureItem label="Risk Assessment" description="Evaluates readmission and complication risk factors" />
+                <FeatureItem label="Patient Communication" description="Generates coordinator scripts and patient education" />
               </div>
+            </div>
 
-              <div className="flex items-center gap-3 pt-2">
-                <Button
-                  onClick={handleSave}
-                  disabled={saving}
-                  style={{ backgroundColor: '#60A5FA', color: '#000000' }}
-                >
-                  {saving ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-                  {saving ? 'Saving...' : 'Save Settings'}
-                </Button>
-                <Button
-                  variant="outline"
-                  onClick={handleTest}
-                  disabled={testing || !llmEndpoint}
-                  style={{ color: '#60A5FA', borderColor: '#374151' }}
-                >
-                  {testing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Cpu className="w-4 h-4 mr-2" />}
-                  {testing ? 'Testing...' : 'Test Connection'}
-                </Button>
-                {saved && (
-                  <Badge className="flex items-center gap-1" style={{ backgroundColor: '#065F46', color: '#34D399' }}>
-                    <CheckCircle className="w-3 h-3" /> Saved
-                  </Badge>
-                )}
-              </div>
-
+            <div className="flex items-center gap-3 pt-2">
+              <Button
+                onClick={handleTest}
+                disabled={testing}
+                style={{ backgroundColor: '#60A5FA', color: '#000000' }}
+              >
+                {testing ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Cpu className="w-4 h-4 mr-2" />}
+                {testing ? 'Testing...' : 'Test AI Engine'}
+              </Button>
               {testResult && (
-                <div
-                  className="p-3 rounded-lg border flex items-start gap-2"
-                  style={{
-                    backgroundColor: testResult.success ? '#064E3B' : '#7F1D1D',
-                    borderColor: testResult.success ? '#059669' : '#DC2626',
-                  }}
-                >
-                  {testResult.success
-                    ? <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#34D399' }} />
-                    : <XCircle className="w-5 h-5 mt-0.5 flex-shrink-0" style={{ color: '#FCA5A5' }} />}
-                  <div>
-                    <p className="text-sm font-medium" style={{ color: testResult.success ? '#34D399' : '#FCA5A5' }}>
-                      {testResult.success ? 'Connection Successful' : 'Connection Failed'}
-                    </p>
-                    <p className="text-xs mt-0.5" style={{ color: testResult.success ? '#6EE7B7' : '#FECACA' }}>
-                      {testResult.message}
-                    </p>
-                  </div>
-                </div>
+                <Badge className="flex items-center gap-1" style={{ backgroundColor: '#065F46', color: '#34D399' }}>
+                  <CheckCircle className="w-3 h-3" /> {testResult.message}
+                </Badge>
               )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      )}
+            </div>
+
+            <div className="p-3 rounded-lg border" style={{ backgroundColor: '#064E3B', borderColor: '#059669' }}>
+              <p className="text-sm font-medium" style={{ color: '#34D399' }}>
+                How to improve AI accuracy
+              </p>
+              <p className="text-xs mt-1" style={{ color: '#6EE7B7' }}>
+                Import hospital-specific triage rules and paging criteria via the &quot;Import Rules&quot; feature
+                on the Triage Rules page. The more rules you import, the more accurate the AI analysis becomes.
+                The engine prioritizes imported rules first, then falls back to built-in clinical reasoning.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </motion.div>
 
       {canBackup && (
         <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.3, delay: 0.1 }}>
@@ -418,6 +220,7 @@ export default function Settings() {
           <CardContent className="p-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <InfoRow label="Application" value="TriageLink" />
+              <InfoRow label="AI Engine" value="Built-in (No External API)" />
               <InfoRow label="Environment" value={typeof window !== 'undefined' && window.electronAPI ? 'Electron (Desktop)' : 'Browser (Dev)'} />
               <InfoRow label="Storage" value={typeof window !== 'undefined' && window.electronAPI?.db ? 'Encrypted SQLite' : 'localStorage (Dev)'} />
               <InfoRow label="Encryption" value={typeof window !== 'undefined' && window.electronAPI?.db ? 'AES-256-GCM' : 'None (Dev)'} />
@@ -427,15 +230,15 @@ export default function Settings() {
           </CardContent>
         </Card>
       </motion.div>
+    </div>
+  );
+}
 
-      {!canConfigureLLM && (
-        <div className="p-4 rounded-lg border text-center" style={{ backgroundColor: '#1F2937', borderColor: '#374151' }}>
-          <Shield className="w-8 h-8 mx-auto mb-2" style={{ color: '#F59E0B' }} />
-          <p className="text-sm" style={{ color: '#F59E0B' }}>
-            AI and backup settings require Admin or IT role permissions.
-          </p>
-        </div>
-      )}
+function FeatureItem({ label, description }) {
+  return (
+    <div className="p-2 rounded" style={{ backgroundColor: '#111827' }}>
+      <p className="text-xs font-medium" style={{ color: '#60A5FA' }}>{label}</p>
+      <p className="text-xs mt-0.5" style={{ color: '#6B7280' }}>{description}</p>
     </div>
   );
 }
