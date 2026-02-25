@@ -251,7 +251,14 @@ class LocalIntegrations {
     this.Core = {
       InvokeLLM: async (params) => {
         const engine = await this._getEngine();
-        return engine.routeInvokeLLM(params);
+        let dbRules = [];
+        try {
+          const store = ipc ? new IPCEntityStore('TriageRule') : new LocalEntityStore('TriageRule');
+          dbRules = await store.list() || [];
+        } catch {
+          // rules unavailable; engine will use built-in knowledge only
+        }
+        return engine.routeInvokeLLM(params, dbRules);
       },
       SendEmail: async (params) => { console.log('[TriageLink] Email queued:', params); return { success: true, message: 'Email logged locally' }; },
       SendSMS: async (params) => { console.log('[TriageLink] SMS queued:', params); return { success: true, message: 'SMS logged locally' }; },
